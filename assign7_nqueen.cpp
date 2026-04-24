@@ -61,3 +61,30 @@ public:
         return ans;
     }
 };
+
+
+int main() {
+int n;
+cout << "Enter size of chessboard (n): ";
+cin >> n;
+
+Solution obj;
+vector<vector<string>> result = obj.solveNQueens(n);
+int count=0;
+if(result.empty()) {
+    cout << "No solutions exist.\n";
+} else {
+    cout << "Solutions:\n";
+    for(auto &sol : result) {
+        for(auto &row : sol) {
+            cout << row << endl;
+            
+        }
+        count++;
+        cout << endl;
+    }
+}
+cout<<"count is :"<<count<<endl;
+return 0;
+
+}

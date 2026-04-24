@@ -4,198 +4,236 @@ using namespace std;
 
 #define SIZE 10
 
-class Student {
+// ===== RECORD =====
+class Record {
 public:
     int roll;
     char name[20];
-    float marks;
+    int marks;
 
-    Student() {
-        roll = -1;
+    void input() {
+        cout << "Enter Roll: ";
+        cin >> roll;
+        cout << "Enter Name: ";
+        cin >> name;
+        cout << "Enter Marks: ";
+        cin >> marks;
+    }
+
+    void display() {
+        cout << roll << "\t" << name << "\t" << marks << endl;
     }
 };
 
-int hashFunction(int r) {
-    return r % SIZE;
-}
+// ===== HASH TABLE ENTRY =====
+class Hash {
+public:
+    int roll;
+    int pos;
 
-// ---------- CREATE ----------
-void create() {
-    ofstream file("data.dat", ios::binary);
-    Student s;
+    Hash() {
+        roll = -1;
+        pos = -1;
+    }
+};
 
-    for (int i = 0; i < SIZE; i++)
-        file.write((char*)&s, sizeof(s));
+// ===== MAIN CLASS =====
+class DB {
+    Hash table[SIZE];
+    fstream file;
 
-    file.close();
-    cout << "File created\n";
-}
+public:
 
-// ---------- ADD ----------
-void add() {
-    fstream file("data.dat", ios::in | ios::out | ios::binary);
-    Student s, temp;
-
-    cout << "Enter roll name marks: ";
-    cin >> s.roll >> s.name >> s.marks;
-
-    int index = hashFunction(s.roll);
-
-    int choice;
-    cout << "1.Without Replacement\n2.With Replacement\nChoose: ";
-    cin >> choice;
-
-    // -------- WITHOUT REPLACEMENT --------
-    if (choice == 1) {
-        for (int i = 0; i < SIZE; i++) {
-            int pos = (index + i) % SIZE;
-
-            file.seekg(pos * sizeof(s));
-            file.read((char*)&temp, sizeof(temp));
-
-            if (temp.roll == -1) {
-                file.seekp(pos * sizeof(s));
-                file.write((char*)&s, sizeof(s));
-                break;
-            }
-        }
+    DB() {
+        file.open("data.dat", ios::out | ios::binary);
+        file.close();
     }
 
-    // -------- WITH REPLACEMENT --------
-    else {
-        file.seekg(index * sizeof(s));
-        file.read((char*)&temp, sizeof(temp));
+    int hashFunc(int r) {
+        return r % SIZE;
+    }
 
-        // if empty
-        if (temp.roll == -1) {
-            file.seekp(index * sizeof(s));
-            file.write((char*)&s, sizeof(s));
+    // ===== COMMON FUNCTION TO WRITE IN FILE =====
+    int writeToFile(Record &r) {
+        file.open("data.dat", ios::app | ios::binary);
+        int pos = file.tellp() / sizeof(Record);
+        file.write((char*)&r, sizeof(r));
+        file.close();
+        return pos;
+    }
+
+    // ================= WITHOUT REPLACEMENT =================
+    void insertWithout() {
+        Record r;
+        r.input();
+
+        int index = hashFunc(r.roll);
+
+        // linear probing
+        while (table[index].pos != -1) {
+            index = (index + 1) % SIZE;
         }
+
+        int pos = writeToFile(r);
+
+        table[index].roll = r.roll;
+        table[index].pos = pos;
+
+        cout << "Inserted (Without Replacement)\n";
+    }
+
+    // ================= WITH REPLACEMENT =================
+    void insertWith() {
+        Record r;
+        r.input();
+
+        int index = hashFunc(r.roll);
+
+        // CASE 1: empty
+        if (table[index].pos == -1) {
+            int pos = writeToFile(r);
+            table[index].roll = r.roll;
+            table[index].pos = pos;
+        }
+
+        // CASE 2: collision
         else {
-            // simple replacement logic
-            if (hashFunction(temp.roll) != index) {
-                file.seekp(index * sizeof(s));
-                file.write((char*)&s, sizeof(s));
-                s = temp;
-            }
+            // if existing element is NOT at home position
+            if (hashFunc(table[index].roll) != index) {
 
-            // insert remaining using linear probing
-            for (int i = 1; i < SIZE; i++) {
-                int pos = (index + i) % SIZE;
+                // swap
+                int oldRoll = table[index].roll;
+                int oldPos  = table[index].pos;
 
-                file.seekg(pos * sizeof(s));
-                file.read((char*)&temp, sizeof(temp));
+                int pos = writeToFile(r);
+                table[index].roll = r.roll;
+                table[index].pos = pos;
 
-                if (temp.roll == -1) {
-                    file.seekp(pos * sizeof(s));
-                    file.write((char*)&s, sizeof(s));
-                    break;
+                // reinsert old element
+                int newIndex = (index + 1) % SIZE;
+                while (table[newIndex].pos != -1) {
+                    newIndex = (newIndex + 1) % SIZE;
                 }
+
+                table[newIndex].roll = oldRoll;
+                table[newIndex].pos = oldPos;
+            }
+
+            // normal probing
+            else {
+                while (table[index].pos != -1) {
+                    index = (index + 1) % SIZE;
+                }
+
+                int pos = writeToFile(r);
+                table[index].roll = r.roll;
+                table[index].pos = pos;
             }
         }
+
+        cout << "Inserted (With Replacement)\n";
     }
 
-    file.close();
-}
+    // ================= DISPLAY =================
+    void display() {
+        Record r;
+        file.open("data.dat", ios::in | ios::binary);
 
-// ---------- DISPLAY ----------
-void display() {
-    ifstream file("data.dat", ios::binary);
-    Student s;
+        cout << "\nRoll\tName\tMarks\n";
 
-    cout << "\nIndex\tRoll\tName\tMarks\n";
-
-    for (int i = 0; i < SIZE; i++) {
-        file.read((char*)&s, sizeof(s));
-
-        cout << i << "\t";
-        if (s.roll == -1)
-            cout << "Empty";
-        else
-            cout << s.roll << "\t" << s.name << "\t" << s.marks;
-
-        cout << endl;
-    }
-
-    file.close();
-}
-
-// ---------- SEARCH ----------
-void search() {
-    ifstream file("data.dat", ios::binary);
-    Student s;
-    int roll;
-
-    cout << "Enter roll: ";
-    cin >> roll;
-
-    int index = hashFunction(roll);
-
-    for (int i = 0; i < SIZE; i++) {
-        int pos = (index + i) % SIZE;
-
-        file.seekg(pos * sizeof(s));
-        file.read((char*)&s, sizeof(s));
-
-        if (s.roll == roll) {
-            cout << "Found: " << s.name << " " << s.marks << endl;
-            file.close();
-            return;
+        while (file.read((char*)&r, sizeof(r))) {
+            r.display();
         }
+
+        file.close();
     }
 
-    cout << "Not found\n";
-    file.close();
-}
+    // ================= SEARCH =================
+    void search() {
+        int roll;
+        cout << "Enter Roll: ";
+        cin >> roll;
 
-// ---------- MODIFY ----------
-void modify() {
-    fstream file("data.dat", ios::in | ios::out | ios::binary);
-    Student s;
-    int roll;
+        int index = hashFunc(roll);
+        int start = index;
 
-    cout << "Enter roll: ";
-    cin >> roll;
+        while (table[index].roll != -1) {
 
-    int index = hashFunction(roll);
+            if (table[index].roll == roll) {
+                Record r;
 
-    for (int i = 0; i < SIZE; i++) {
-        int pos = (index + i) % SIZE;
+                file.open("data.dat", ios::in | ios::binary);
+                file.seekg(table[index].pos * sizeof(Record));
+                file.read((char*)&r, sizeof(r));
+                file.close();
 
-        file.seekg(pos * sizeof(s));
-        file.read((char*)&s, sizeof(s));
+                cout << "Found:\n";
+                r.display();
+                return;
+            }
 
-        if (s.roll == roll) {
-            cout << "Enter new name marks: ";
-            cin >> s.name >> s.marks;
-
-            file.seekp(pos * sizeof(s));
-            file.write((char*)&s, sizeof(s));
-
-            cout << "Updated\n";
-            file.close();
-            return;
+            index = (index + 1) % SIZE;
+            if (index == start) break;
         }
+
+        cout << "Not Found\n";
     }
 
-    cout << "Not found\n";
-    file.close();
-}
+    // ================= MODIFY =================
+    void modify() {
+        int roll;
+        cout << "Enter Roll: ";
+        cin >> roll;
 
-// ---------- MAIN ----------
+        int index = hashFunc(roll);
+        int start = index;
+
+        while (table[index].roll != -1) {
+
+            if (table[index].roll == roll) {
+                Record r;
+                cout << "Enter new data:\n";
+                r.input();
+
+                file.open("data.dat", ios::in | ios::out | ios::binary);
+                file.seekp(table[index].pos * sizeof(Record));
+                file.write((char*)&r, sizeof(r));
+                file.close();
+
+                cout << "Updated\n";
+                return;
+            }
+
+            index = (index + 1) % SIZE;
+            if (index == start) break;
+        }
+
+        cout << "Not Found\n";
+    }
+};
+
+// ===== MAIN =====
 int main() {
+    DB db;
     int ch;
 
     do {
-        cout << "\n1.Create\n2.Display\n3.Add\n4.Search\n5.Modify\n6.Exit\n";
+        cout << "\n1.Insert Without Replacement";
+        cout << "\n2.Insert With Replacement";
+        cout << "\n3.Display";
+        cout << "\n4.Search";
+        cout << "\n5.Modify";
+        cout << "\n6.Exit";
+
+        cout << "\nEnter choice: ";
         cin >> ch;
 
         switch (ch) {
-            case 1: create(); break;
-            case 2: display(); break;
-            case 3: add(); break;
-            case 4: search(); break;
-            case 5: modify(); break;
+            case 1: db.insertWithout(); break;
+            case 2: db.insertWith(); break;
+            case 3: db.display(); break;
+            case 4: db.search(); break;
+            case 5: db.modify(); break;
         }
 
     } while (ch != 6);

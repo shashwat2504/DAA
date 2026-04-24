@@ -1,232 +1,182 @@
 #include <iostream>
 using namespace std;
 
-class Node {
+class node {
 public:
-    string key, meaning;
-    Node* left;
-    Node* right;
-    int height;
+    string word, mean;
+    node *l, *r;
 
-    Node(string k, string m) {
-        key = k;
-        meaning = m;
-        left = right = NULL;
-        height = 1;
+    node(string w, string m) {
+        word = w;
+        mean = m;
+        l = r = NULL;
     }
 };
 
-class AVLDictionary {
-    Node* root;
+class tree {
+    node *root;
 
 public:
-    AVLDictionary() {
+    tree() {
         root = NULL;
     }
 
-    // Height
-    int height(Node* node) {
-        if (node == NULL) return 0;
-        return node->height;
+    // HEIGHT
+    int height(node *root) {
+        if (root == NULL) return 0;
+
+        int lh = height(root->l);
+        int rh = height(root->r);
+
+        return max(lh, rh) + 1;
     }
 
-    // Balance Factor
-    int getBalance(Node* node) {
-        if (node == NULL) return 0;
-        return height(node->left) - height(node->right);
+    // BALANCE FACTOR
+    int diff(node *root) {
+        return height(root->l) - height(root->r);
     }
 
-    // Right Rotate
-    Node* rightRotate(Node* y) {
-        Node* x = y->left;
-        Node* T2 = x->right;
-
-        x->right = y;
-        y->left = T2;
-
-        y->height = max(height(y->left), height(y->right)) + 1;
-        x->height = max(height(x->left), height(x->right)) + 1;
-
-        return x;
+    // LL (Right rotation)
+    node* ll(node *parent) {
+        node *temp = parent->l;
+        parent->l = temp->r;
+        temp->r = parent;
+        return temp;
     }
 
-    // Left Rotate
-    Node* leftRotate(Node* x) {
-        Node* y = x->right;
-        Node* T2 = y->left;
-
-        y->left = x;
-        x->right = T2;
-
-        x->height = max(height(x->left), height(x->right)) + 1;
-        y->height = max(height(y->left), height(y->right)) + 1;
-
-        return y;
+    // RR (Left rotation)
+    node* rr(node *parent) {
+        node *temp = parent->r;
+        parent->r = temp->l;
+        temp->l = parent;
+        return temp;
     }
 
-    // Insert
-    Node* insert(Node* node, string key, string meaning) {
-        if (node == NULL)
-            return new Node(key, meaning);
+    // LR
+    node* lr(node *parent) {
+        parent->l = rr(parent->l);
+        return ll(parent);
+    }
 
-        if (key < node->key)
-            node->left = insert(node->left, key, meaning);
-        else if (key > node->key)
-            node->right = insert(node->right, key, meaning);
+    // RL
+    node* rl(node *parent) {
+        parent->r = ll(parent->r);
+        return rr(parent);
+    }
+
+    // BALANCE FUNCTION
+    node* balance(node *root) {
+        int bf = diff(root);
+
+        // Left heavy
+        if (bf > 1) {
+            if (diff(root->l) >= 0)
+                return ll(root);   // LL
+            else
+                return lr(root);   // LR
+        }
+
+        // Right heavy
+        if (bf < -1) {
+            if (diff(root->r) <= 0)
+                return rr(root);   // RR
+            else
+                return rl(root);   // RL
+        }
+
+        return root;
+    }
+
+    // INSERT
+    node* insert(node *root, string word, string mean) {
+        if (root == NULL)
+            return new node(word, mean);
+
+        if (word < root->word)
+            root->l = insert(root->l, word, mean);
+
+        else if (word > root->word)
+            root->r = insert(root->r, word, mean);
+
         else {
-            cout << "Keyword already exists! Use update.\n";
-            return node;
+            cout << "Duplicate word not allowed\n";
+            return root;
         }
 
-        node->height = 1 + max(height(node->left), height(node->right));
-
-        int balance = getBalance(node);
-
-        // AVL Cases
-        // LL
-        if (balance > 1 && key < node->left->key)
-            return rightRotate(node);
-
-        // RR
-        if (balance < -1 && key > node->right->key)
-            return leftRotate(node);
-
-        // LR
-        if (balance > 1 && key > node->left->key) {
-            node->left = leftRotate(node->left);
-            return rightRotate(node);
-        }
-
-        // RL
-        if (balance < -1 && key < node->right->key) {
-            node->right = rightRotate(node->right);
-            return leftRotate(node);
-        }
-
-        return node;
+        return balance(root);
     }
 
-    // Update meaning
-    void update(Node* node, string key, string newMeaning) {
-        if (node == NULL) {
-            cout << "Keyword not found!\n";
+    // UPDATE
+    void update(node *root, string word, string newMean) {
+        if (root == NULL) {
+            cout << "Word not found\n";
             return;
         }
 
-        if (key == node->key) {
-            node->meaning = newMeaning;
-            cout << "Updated successfully!\n";
+        if (word == root->word) {
+            root->mean = newMean;
+            cout << "Updated successfully\n";
         }
-        else if (key < node->key)
-            update(node->left, key, newMeaning);
+        else if (word < root->word)
+            update(root->l, word, newMean);
         else
-            update(node->right, key, newMeaning);
+            update(root->r, word, newMean);
     }
 
-    // Search with comparison count
-    Node* search(Node* node, string key, int &comparisons) {
-        if (node == NULL) return NULL;
+    // DISPLAY (Ascending)
+    void inorder(node *root) {
+        if (root == NULL) return;
 
-        comparisons++;
-
-        if (key == node->key)
-            return node;
-        else if (key < node->key)
-            return search(node->left, key, comparisons);
-        else
-            return search(node->right, key, comparisons);
+        inorder(root->l);
+        cout << root->word << " : " << root->mean << endl;
+        inorder(root->r);
     }
 
-    // Inorder (sorted)
-    void inorder(Node* node) {
-        if (node != NULL) {
-            inorder(node->left);
-            cout << node->key << " : " << node->meaning << endl;
-            inorder(node->right);
-        }
+    // WRAPPER FUNCTIONS
+    void add(string word, string mean) {
+        root = insert(root, word, mean);
     }
 
-    // Wrapper functions
-    void add(string key, string meaning) {
-        root = insert(root, key, meaning);
-    }
-
-    void updateMeaning(string key, string meaning) {
-        update(root, key, meaning);
+    void updateMeaning(string word, string mean) {
+        update(root, word, mean);
     }
 
     void display() {
-        cout << "\nDictionary (Sorted):\n";
+        cout << "\nDictionary (Ascending Order):\n";
         inorder(root);
-    }
-
-    void find(string key) {
-        int comparisons = 0;
-        Node* result = search(root, key, comparisons);
-
-        if (result)
-            cout << "Found: " << result->meaning << endl;
-        else
-            cout << "Not Found\n";
-
-        cout << "Comparisons required: " << comparisons << endl;
-    }
-
-    void maxComparisons() {
-        cout << "Maximum comparisons (height of AVL tree): " << height(root) << endl;
     }
 };
 
 // MAIN
 int main() {
-    AVLDictionary dict;
+    tree t;
     int choice;
-    string key, meaning;
+    string word, mean;
 
     do {
-        cout << "\n--- AVL Dictionary Menu ---\n";
-        cout << "1. Add Keyword\n2. Update Meaning\n3. Display\n4. Search\n5. Max Comparisons\n0. Exit\n";
+        cout << "\n1. Insert\n2. Update\n3. Display\n0. Exit\n";
         cin >> choice;
 
         switch (choice) {
         case 1:
-            cout << "Enter keyword: ";
-            cin >> key;
+            cout << "Enter word: ";
+            cin >> word;
             cout << "Enter meaning: ";
-            cin.ignore();
-            getline(cin, meaning);
-            dict.add(key, meaning);
+            cin >> mean;
+            t.add(word, mean);
             break;
 
         case 2:
-            cout << "Enter keyword: ";
-            cin >> key;
+            cout << "Enter word: ";
+            cin >> word;
             cout << "Enter new meaning: ";
-            cin.ignore();
-            getline(cin, meaning);
-            dict.updateMeaning(key, meaning);
+            cin >> mean;
+            t.updateMeaning(word, mean);
             break;
 
         case 3:
-            dict.display();
+            t.display();
             break;
-
-        case 4:
-            cout << "Enter keyword to search: ";
-            cin >> key;
-            dict.find(key);
-            break;
-
-        case 5:
-            dict.maxComparisons();
-            break;
-
-        case 0:
-            cout << "Exiting...\n";
-            break;
-
-        default:
-            cout << "Invalid choice!\n";
         }
 
     } while (choice != 0);

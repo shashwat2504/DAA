@@ -19,6 +19,7 @@ int main() {
         cin >> bi[i];
     }
 
+    
     cout << "Enter capacity: ";
     cin >> W;
 
